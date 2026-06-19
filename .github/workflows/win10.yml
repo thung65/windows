@@ -52,23 +52,23 @@ jobs:
 
       - name: Cài đặt Cloudflare Tunnel và xuất đường link noVNC
         run: |
-          # 1. Tải trực tiếp file binary thực thi chính thức từ Cloudflare
+          # 1. Tải CHÍNH XÁC file thực thi từ link gốc của Cloudflare
           curl -L --output cloudflared https://github.com
           
-          # 2. Cấp quyền thực thi cho file vừa tải
+          # 2. Cấp quyền chạy cho file vừa tải
           chmod +x cloudflared
           
-          # 3. Di chuyển file vào thư mục hệ thống để có thể gọi lệnh ở mọi nơi
+          # 3. Đưa vào thư mục hệ thống để gọi được lệnh toàn cục
           sudo mv cloudflared /usr/local/bin/
           
-          # 4. Khởi chạy tunnel miễn phí hướng về cổng 80 của Nginx
+          # 4. Khởi chạy tunnel hướng về cổng 80 của Nginx
           echo "=== ĐANG KHỞI TẠO ĐƯỜNG LINK TRY CLOUDFLARE ==="
           cloudflared tunnel --url http://127.0.0.1:80 > cloudflare.log 2>&1 &
           
-          # Chờ 8 giây để Cloudflare thiết lập đường truyền ổn định
+          # Chờ 8 giây để hệ thống kết nối xong
           sleep 8
           
-          # 5. Trích xuất đường link kết nối .trycloudflare.com từ file log
+          # 5. Lấy đường link .trycloudflare.com từ log
           echo "===================================================="
           echo "ĐƯỜNG LINK TRUY CẬP WINDOWS 10 NOVNC CỦA BẠN:"
           grep -o 'https://[^ ]*\.trycloudflare\.com' cloudflare.log | head -n 1
