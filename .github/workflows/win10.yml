@@ -24,55 +24,51 @@ jobs:
             dockurr/windows
           echo "Đang tải và khởi tạo Windows 10 ngầm..."
 
-      - name: Cài đặt và cấu hình Nginx Reverse Proxy
+      - name: Cấu hình Nginx làm Reverse Proxy cho noVNC
         run: |
-          sudo apt-get install nginx -y
-          
-          # Ghi đè cấu hình Nginx để điều hướng cổng 80 vào cổng 8006 của noVNC
-          sudo tee /etc/nginx/sites-available/default << 'EOF'
+          sudo rm -f /etc/nginx/sites-enabled/default
+          cat << 'EOF' | sudo tee /etc/nginx/sites-available/novnc
           server {
-              listen 80 default_server;
-              listen [::]:80 default_server;
-
-              server_name _;
+              listen 80;
+              server_name localhost;
 
               location / {
                   proxy_pass http://127.0.0.1:8006;
                   proxy_http_version 1.1;
-                  
-                  # Cấu hình bắt buộc để chạy được WebSocket của noVNC
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "Upgrade";
-                  
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto $scheme;
+                  
+                  proxy_read_timeout 3600s;
+                  proxy_send_timeout 3600s;
               }
           }
           EOF
-          
-          # Khởi động lại Nginx để áp dụng cấu hình mới
+          sudo ln -s /etc/nginx/sites-available/novnc /etc/nginx/sites-enabled/
           sudo systemctl restart nginx
-          echo "Nginx Reverse Proxy đã kích hoạt trên cổng 80."
 
       - name: Cài đặt Cloudflare Tunnel và xuất đường link noVNC
         run: |
-          # Tải công cụ luân chuyển cổng của Cloudflare
-          curl -L --output cloudflared.deb https://github.com
-          sudo dpkg -i cloudflared.deb
+          # Thêm kho lưu trữ chuẩn của Cloudflare
+          sudo mkdir -p --mode=0755 /etc/apt/keyrings
+          curl -fsSL https://cloudflare.com | sudo tee /etc/apt/keyrings/cloudflare-main.gpg >/dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/cloudflare-main.gpg] https://cloudflare.com generic main" | sudo tee /etc/apt/sources.list.d/cloudflared.list
           
-          # Chạy đường hầm hướng vào cổng 80 của Nginx và lưu log
-          cloudflared tunnel --url http://127.0.0.1:80 --logfile cloudflare.log &
-          sleep 10
+          # Cập nhật và cài đặt cloudflared sạch
+          sudo apt-get update && sudo apt-get install cloudflared -y
           
-          # Trích xuất đường link truy cập công khai duy nhất từ log
+          # Khởi chạy tunnel miễn phí hướng về cổng 80 của Nginx
+          echo "=== ĐANG KHỞI TẠO ĐƯỜNG LINK TRY CLOUDFLARE ==="
+          cloudflared tunnel --url http://127.0.0.1:80 > cloudflare.log 2>&1 &
+          
+          # Chờ 5 giây để Cloudflare cấp link công khai
+          sleep 5
+          
+          # Trích xuất đường link .trycloudflare.com từ log
           echo "===================================================="
-          echo "=== ĐƯỜNG LINK TRUY CẬP WINDOWS 10 CỦA BẠN (QUA NGINX) ==="
-          grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' cloudflare.log | head -n 1
+          echo "ĐƯỜNG LINK TRUY CẬP WINDOWS 10 NOVNC CỦA BẠN:"
+          grep -o 'https://[^ ]*\.trycloudflare\.com' cloudflare.log | head -n 1
           echo "===================================================="
-
-      - name: Duy trì máy ảo hoạt động (Tối đa 6 tiếng)
-        run: |
-          echo "Môi trường đang chạy ổn định..."
-          sleep 19800
