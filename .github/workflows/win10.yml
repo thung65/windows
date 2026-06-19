@@ -49,27 +49,21 @@ jobs:
           EOF
           sudo ln -s /etc/nginx/sites-available/novnc /etc/nginx/sites-enabled/
           sudo systemctl restart nginx
+          echo "Nginx đã chạy trên cổng 80."
 
-      - name: Cài đặt Cloudflare Tunnel và xuất đường link noVNC
+      - name: Khởi tạo đường link noVNC qua Localtunnel
         run: |
-          # 1. Tải CHÍNH XÁC file thực thi từ link gốc của Cloudflare
-          curl -L --output cloudflared https://github.com
+          # 1. Cài đặt localtunnel toàn cục qua npm (đã có sẵn trên GitHub Runner)
+          sudo npm install -g localtunnel
           
-          # 2. Cấp quyền chạy cho file vừa tải
-          chmod +x cloudflared
+          # 2. Khởi chạy localtunnel hướng vào cổng 80 của Nginx và lưu log
+          lt --port 80 > localtunnel.log 2>&1 &
           
-          # 3. Đưa vào thư mục hệ thống để gọi được lệnh toàn cục
-          sudo mv cloudflared /usr/local/bin/
+          # 3. Chờ 5 giây để hệ thống cấp link ổn định
+          sleep 5
           
-          # 4. Khởi chạy tunnel hướng về cổng 80 của Nginx
-          echo "=== ĐANG KHỞI TẠO ĐƯỜNG LINK TRY CLOUDFLARE ==="
-          cloudflared tunnel --url http://127.0.0.1:80 > cloudflare.log 2>&1 &
-          
-          # Chờ 8 giây để hệ thống kết nối xong
-          sleep 8
-          
-          # 5. Lấy đường link .trycloudflare.com từ log
+          # 4. Trích xuất đường link công khai duy nhất từ file log
           echo "===================================================="
-          echo "ĐƯỜNG LINK TRUY CẬP WINDOWS 10 NOVNC CỦA BẠN:"
-          grep -o 'https://[^ ]*\.trycloudflare\.com' cloudflare.log | head -n 1
+          echo "=== ĐƯỜNG LINK TRUY CẬP WINDOWS 10 CỦA BẠN ==="
+          cat localtunnel.log
           echo "===================================================="
