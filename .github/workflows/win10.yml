@@ -1,7 +1,9 @@
-name: RDP
-
+name: RDP-Runner
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Thay bằng tên nhánh của bạn (thường là main hoặc master)
+  workflow_dispatch: # Giữ lại dòng này để vẫn có thể chạy thủ công khi cần
 
 jobs:
   secure-rdp:
